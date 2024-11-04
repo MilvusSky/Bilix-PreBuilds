@@ -70,13 +70,15 @@ jobs:
         if: ${{ env.url-custom-cn == 'false' && env.Build-Bilix == 'true'  }}
         run: |
           wget https://t.me/s/bilibili_apk_beta
-          echo "cn-url=https://dl.hdslb.com/mobile/pack/android64/15563675/iBiliPlayer-apinkRelease-8.7.0-b15563675.apk" >> $GITHUB_ENV
+          echo "cn-url=https://file.io/WhsdzpeZ5AhZ" >> $GITHUB_ENV
+          echo "cn-patched-url=https://file.io/ClPc5GQjP7yV" >> $GITHUB_ENV
 
       # Get original bilibili
       - name: Get original bilibili-cn
         if: ${{ env.Build-Bilix == 'true' }}
         run: |
-          aria2c --out "cn.apk" ${{ env.cn-url }}
+          aria2c --out "cn.apk" ${{ env.cn-url }} --header="Refer:https://www.file.io/
+          aria2c --out "cn-patched.apk" ${{ env.cn-patched-url }} --header="Refer:https://www.file.io/
 
       # Check $version & $versionCode
       - name: "Get Cn Info"
@@ -96,10 +98,10 @@ jobs:
           echo "Bilix-vercode=${{steps.apk-info-cn.outputs.versionCode}}" >> $GITHUB_ENV
 
       # build part
-      - name: Build Bilix
-        if: ${{ env.Build-Bilix == 'true' }}
-        run: |
-          java -jar revanced-cli.jar patch --merge integrations.apk --patch-bundle patches.jar --signing-levels 1,2,3 cn.apk
+      # - name: Build Bilix
+      #   if: ${{ env.Build-Bilix == 'true' }}
+      #   run: |
+      #     java -jar revanced-cli.jar patch --merge integrations.apk --patch-bundle patches.jar --signing-levels 1,2,3 cn.apk
 
       # named Bilix
       - name: Rename Bilix
