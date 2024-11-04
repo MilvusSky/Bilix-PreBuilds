@@ -78,6 +78,10 @@ jobs:
         if: ${{ env.Build-Bilix == 'true' }}
         run: |
           aria2c --out "cn.apk" ${{ env.cn-url }} --header="Refer:https://www.file.io/
+      # Get patched bilibili
+      - name: Get patched bilibili-cn
+        if: ${{ env.Build-Bilix == 'true' }}
+        run: |
           aria2c --out "cn-patched.apk" ${{ env.cn-patched-url }} --header="Refer:https://www.file.io/
 
       # Check $version & $versionCode
