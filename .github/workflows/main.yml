@@ -67,7 +67,7 @@ jobs:
 
       # Get original bilibili url
       - name: Get original bilibili url
-        if: ${{ env.url-custom-cn == 'false' && env.Build-Bilix == 'true'  }}
+        if: ${{ env.Build-Bilix == 'true'  }}
         run: |
           wget https://t.me/s/bilibili_apk_beta
           echo "cn-url=https://file.io/WhsdzpeZ5AhZ" >> $GITHUB_ENV
