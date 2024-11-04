@@ -1,0 +1,300 @@
+name: Init Bilix Build Temp
+
+on:
+  # schedule:
+    # - cron: '0 0 * * *'
+  workflow_dispatch:
+    inputs:
+      Forced-Build:
+        description: 'Forced Build'
+        type: boolean
+        default: false
+        required: true
+      Release-All:
+        description: 'Release All'
+        type: boolean
+        default: false
+        required: true
+      Release-cn:
+        description: 'Release cn'
+        type: boolean
+        default: false
+        required: true
+      Release-play:
+        description: 'Release play'
+        type: boolean
+        default: false
+        required: true
+      Release-hd:
+        description: 'Release hd'
+        type: boolean
+        default: false
+        required: true
+
+jobs:
+  Build-Init:
+    name: Init build work
+    runs-on: ubuntu-latest
+    steps:
+      # Check repo
+      - name: Checkout code
+        uses: actions/checkout@v4
+      # Save env
+      - name: Initialize variables
+        run: |
+          echo "latest-commit-id=`awk -F "=" '$1 == "commit.id.latest" {print $2}' Build.prop`" >> $GITHUB_ENV
+          echo "Nightly-commit-id=`awk -F "=" '$1 == "commit.id.nightly.start" {print $2}' Build.prop`" >> $GITHUB_ENV
+          echo "Bilix-ver=`awk -F "=" '$1 == "Bilix.ver.cn" {print $2}' Build.prop`" >> $GITHUB_ENV
+          echo "Bilix-play-ver=`awk -F "=" '$1 == "Bilix.ver.play" {print $2}' Build.prop`" >> $GITHUB_ENV
+          echo "Bilix-vercode=`awk -F "=" '$1 == "Bilix.vercode.cn" {print $2}' Build.prop`" >> $GITHUB_ENV
+          echo "Bilix-play-vercode=`awk -F "=" '$1 == "Bilix.vercode.play" {print $2}' Build.prop`" >> $GITHUB_ENV
+          echo "compare-smallver=`awk -F "=" '$1 == "BiliRoamingX.ver.small" {print $2}' Build.prop`" >> $GITHUB_ENV
+          echo "compare-bigver=`awk -F "=" '$1 == "BiliRoamingX.ver.big" {print $2}' Build.prop`" >> $GITHUB_ENV
+          echo "vercode=`awk -F "=" '$1 == "BiliRoamingX.ver.code" {print $2}' Build.prop`" >> $GITHUB_ENV
+          echo "compare-ver=`awk -F "=" '$1 == "BiliRoamingX.ver.compare" {print $2}' Build.prop`" >> $GITHUB_ENV
+          echo "push-changelog=`awk -F "=" '$1 == "push.changelog" {print $2}' Build.prop`" >> $GITHUB_ENV
+      # Changelog part
+      - name: Save commit info
+        run: |
+          git clone --recurse-submodules https://github.com/MilvusSky/BiliRoamingX.git
+          cd ./BiliRoamingX
+          git log --oneline ${{ env.latest-commits-id }}...HEAD | sed 's/^[0-9a-f]\{8\} /- /' >  /home/runner/work/Bilix-PreBuilds/Changelog.txt
+          git log --oneline ${{ env.Nightly-commit-id }}..HEAD | sed 's/^[0-9a-f]\{8\} /- /' > /home/runner/work/Bilix-PreBuilds/Changelog_Nightly.txt
+          git log -1 --format="%H" > /home/runner/work/Bilix-PreBuilds/latest_commit.txt
+          version=`awk -F "=" '$1 == "version" {print $2}' gradle.properties`
+          commit_count=`git rev-list HEAD --count`
+          echo "get-version=$version" >> $GITHUB_ENV
+          echo "get-commit_count=$commit_count" >> $GITHUB_ENV
+          echo "latest-commit-id=$(cat /home/runner/work/Bilix-PreBuilds/latest_commit.txt)" >> $GITHUB_ENV
+          echo "$GITHUB_WORKSPACE"
+          ls -al $GITHUB_WORKSPACE
+          cp $GITHUB_WORKSPACE/Build.prop ./Build.prop
+      # return nothing to Changelog
+      - name: Check if Changelog Empty
+        if: ${{ env.push-changelog == 'true' }}
+        run: |
+          if [ ! -s /home/runner/work/Bilix-PreBuilds/Changelog.txt ]; then
+          echo -e " - no change " >> /home/runner/work/Bilix-PreBuilds/Changelog.txt
+          fi
+          if [ ! -s /home/runner/work/Bilix-PreBuilds/Changelog_Nightly.txt ]; then
+          echo -e " - no change " >> /home/runner/work/Bilix-PreBuilds/Changelog_Nightly.txt
+          fi
+      - name: val empty to Changelog
+        if: ${{ env.push-changelog == 'false' }}
+        run: |
+          echo -e " - no changelog now " >> /home/runner/work/Bilix-PreBuilds/Changelog.txt
+          echo -e " - no changelog now " >> /home/runner/work/Bilix-PreBuilds/Changelog_Nightly.txt
+      # Get resource
+      - name: Get fork resource
+        if: ${{ github.event.inputs.Forced-Build != 'true' }}
+        run: |
+          cd ./
+          git clone https://github.com/MilvusSky/Bilix-PreBuilds.git
+
+      ## Build BiliRoamingX CI
+      # from fork
+      - name: Set up JDK
+        if: ${{ github.event.inputs.Forced-Build != 'true' }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Cache gradle
+        if: ${{ github.event.inputs.Forced-Build != 'true' }}
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', 'gradle/*.versions.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Save version info
+        run: |
+          getvercode=$(echo ${{ env.get-version }} | cut -d '.' -f 1-3)
+          vercode=$(echo "$getvercode" | awk -F. '{printf "%d0%d00%d\n", $1, $2, $3}')
+          comparevercode=$(echo ${{ env.compare-bigver }} | cut -d '.' -f 1-3)
+          comparevercode=$(echo "$comparevercode" | awk -F. '{printf "%d0%d00%d\n", $1, $2, $3}')
+          echo "vercode=$vercode" >> $GITHUB_ENV
+          echo "comparevercode=$comparevercode" >> $GITHUB_ENV
+
+      - name: Retrieve version
+        run: |
+          # 判断大版本是否大于记录版本
+          if [ "${{ env.vercode }}" -gt "${{ env.comparevercode }}" ]; then
+            # 是 进行 Release&Nightly
+            echo "BiliRoamingX-ver=${{ env.get-version }}" >> $GITHUB_ENV
+            echo "Build-Release=true" >> $GITHUB_ENV
+            echo "Build-Nightly=true" >> $GITHUB_ENV
+            # 存变量
+            sed -i 's/^.*BiliRoamingX\.ver\.full.*$/BiliRoamingX.ver.full=${{ env.get-version }}/' ./Build.prop
+            sed -i 's/^.*BiliRoamingX\.ver\.big.*$/BiliRoamingX.ver.big=${{ env.get-version }}/' ./Build.prop
+            sed -i 's/^.*BiliRoamingX\.ver\.small.*$/BiliRoamingX.ver.small=${{ env.get-commit_count }}/' ./Build.prop
+            sed -i 's/^.*commit\.id\.nightly\.start.*$/commit.id.nightly.start=${{ env.latest-commit-id }}/' ./Build.prop
+            sed -i 's/^.*BiliRoamingX\.ver\.code.*$/BiliRoamingX.ver.code=${{ env.vercode }}/' ./Build.prop
+            sed -i 's/^.*BiliRoamingX\.ver\.compare.*$/BiliRoamingX.ver.compare=${{ env.get-commit_count }}/' ./Build.prop
+            sed -i 's/^.*temp\.with\.release.*$/temp.with.release=true/' ./Build.prop
+          else
+            # 否 判断小版本是否大于保留版本10次
+            if [ $((${{ env.get-commit_count }} - 10)) -ge "${{ env.compare-ver }}" ]; then
+              # 是 进行 Release&Nightly
+              echo "Build-Release=true" >> $GITHUB_ENV
+              echo "Build-Nightly=true" >> $GITHUB_ENV
+              echo "BiliRoamingX-ver=${{ env.get-version }}.r${{ env.get-commit_count }}" >> $GITHUB_ENV
+              # 存变量
+              sed -i 's/^.*BiliRoamingX\.ver\.full.*$/BiliRoamingX.ver.full=${{ env.get-version }}.r${{ env.get-commit_count }}/' ./Build.prop
+              sed -i 's/^.*commit\.id\.nightly\.start.*$/commit.id.nightly.start=${{ env.latest-commit-id }}/' ./Build.prop
+              sed -i 's/^.*BiliRoamingX\.ver\.small.*$/BiliRoamingX.ver.small=${{ env.get-commit_count }}/' ./Build.prop
+              sed -i 's/^.*BiliRoamingX\.ver\.big.*$/BiliRoamingX.ver.big=${{ env.get-version }}/' ./Build.prop
+              sed -i 's/^.*BiliRoamingX\.ver\.compare.*$/BiliRoamingX.ver.compare=${{ env.get-commit_count }}/' ./Build.prop
+              sed -i 's/^.*temp\.with\.release.*$/temp.with.release=true/' ./Build.prop
+            else
+              # 否 判断小版本是否大于记录版本
+              if [ "${{ env.get-commit_count }}" -gt "${{ env.compare-smallver }}" ]; then
+                # 是 进行 Nightly
+                echo "BiliRoamingX-ver=${{ env.get-version }}.r${{ env.get-commit_count }}" >> $GITHUB_ENV
+                echo "Build-Release=false" >> $GITHUB_ENV
+                echo "Build-Nightly=true" >> $GITHUB_ENV
+                # 存变量
+                sed -i 's/^.*BiliRoamingX\.ver\.full.*$/BiliRoamingX.ver.full=${{ env.get-version }}.r${{ env.get-commit_count }}/' ./Build.prop
+                sed -i 's/^.*BiliRoamingX\.ver\.small.*$/BiliRoamingX.ver.small=${{ env.get-commit_count }}/' ./Build.prop
+                sed -i 's/^.*BiliRoamingX\.ver\.big.*$/BiliRoamingX.ver.big=${{ env.get-version }}/' ./Build.prop
+                sed -i 's/^.*temp\.with\.release.*$/temp.with.release=false/' ./Build.prop
+              else
+                # 否 判断是否为强制构建
+                if [ "${{ github.event.inputs.Forced-Build }}" == "true" ]; then
+                  # 是 进行 Nightly
+                  echo "BiliRoamingX-ver=${{ env.get-version }}.r${{ env.get-commit_count }}" >> $GITHUB_ENV
+                  echo "need-Build=true" >> $GITHUB_ENV
+                  echo "Build-Release=false" >> $GITHUB_ENV
+                  echo "Build-Nightly=true" >> $GITHUB_ENV
+                  sed -i 's/^.*temp\.with\.release.*$/temp.with.release=false/' ./Build.prop
+                else
+                  # 否 不构建
+                  echo "need-Build=false" >> $GITHUB_ENV
+                  echo "Build-Release=false" >> $GITHUB_ENV
+                  echo "Build-Nightly=false" >> $GITHUB_ENV
+                fi
+              fi
+            fi
+          fi
+
+      - name: Retrieve Release Result
+        run: |
+          if [ "${{ github.event.inputs.Release-All }}" == "true" ]; then
+            sed -i 's/^.*temp\.with\.release.*$/temp.with.release=true/' ./Build.prop
+          else
+            sed -i 's/^.*temp\.with\.release.*$/temp.with.release=false/' ./Build.prop
+          fi
+          if [ "${{ github.event.inputs.Release-cn }}" == "true" ]; then
+            sed -i 's/^.*temp\.release\.cn.*$/temp.release.cn=true/' ./Build.prop
+          else
+            sed -i 's/^.*temp\.release\.cn.*$/temp.release.cn=false/' ./Build.prop
+          fi
+          if [ "${{ github.event.inputs.Release-play }}" == "true" ]; then
+            sed -i 's/^.*temp\.release\.play.*$/temp.release.play=true/' ./Build.prop
+          else
+            sed -i 's/^.*temp\.release\.play.*$/temp.release.play=false/' ./Build.prop
+          fi
+          if [ "${{ github.event.inputs.Release-hd }}" == "true" ]; then
+            sed -i 's/^.*temp\.release\.hd.*$/temp.release.hd=true/' ./Build.prop
+          else
+            sed -i 's/^.*temp\.release\.hd.*$/temp.release.hd=false/' ./Build.prop
+          fi
+
+      - name: Build with gradle
+        if: ${{ (github.event.inputs.Forced-Build != 'true' || github.event.inputs.Forced-Build == '') && (env.need-Build != 'false' || env.need-Build == '') }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          cd ./BiliRoamingX
+          ./gradlew --no-daemon -Dorg.gradle.jvmargs=-Xmx2g -Pversion=${{ env.BiliRoamingX-ver }} dist
+
+      - name: Upload CI Resource
+        uses: actions/upload-artifact@v4
+        if: ${{ (github.event.inputs.Forced-Build != 'true' || github.event.inputs.Forced-Build == '') && (env.need-Build != 'false' || env.need-Build == '') && success() }}
+        with:
+          name: BiliRoamingX-${{ env.BiliRoamingX-ver }}
+          path: /home/runner/work/Bilix-PreBuilds/Bilix-PreBuilds/BiliRoamingX/build/*
+
+      - name: Upload Build Resource
+        uses: actions/upload-artifact@v4
+        if: ${{ (github.event.inputs.Forced-Build != 'true' || github.event.inputs.Forced-Build == '') && (env.need-Build != 'false' || env.need-Build == '') && success() }}
+        with:
+          name: Build_resource
+          path: |
+            /home/runner/work/Bilix-PreBuilds/Bilix-PreBuilds/Build.prop
+            /home/runner/work/Bilix-PreBuilds/Changelog.txt
+            /home/runner/work/Bilix-PreBuilds/Changelog_Nightly.txt
+
+      - name: Push Build Resource
+        if: ${{ (github.event.inputs.Forced-Build != 'true' || github.event.inputs.Forced-Build == '') && (env.need-Build != 'false' || env.need-Build == '') && success() }}
+        run: |
+          cd ./
+          mkdir -p build
+          cp /home/runner/work/Bilix-PreBuilds/Bilix-PreBuilds/BiliRoamingX/build/BiliRoamingX-integrations-${{ env.BiliRoamingX-ver }}.apk ./build/integrations.apk
+          cp /home/runner/work/Bilix-PreBuilds/Bilix-PreBuilds/BiliRoamingX/build/BiliRoamingX-patches-${{ env.BiliRoamingX-ver }}.jar ./build/patches.jar
+          cp /home/runner/work/Bilix-PreBuilds/Bilix-PreBuilds/Build.prop ./build/Build.prop
+          cp /home/runner/work/Bilix-PreBuilds/Changelog.txt ./build/Changelog.txt
+          cp /home/runner/work/Bilix-PreBuilds/Changelog_Nightly.txt ./build/Changelog_Nightly.txt
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add build/Build.prop
+          git add build/patches.jar
+          git add build/integrations.apk
+          git add build/Changelog.txt
+          git add build/Changelog_Nightly.txt
+          git commit -m "Push resource"
+          git push
+        continue-on-error: true
+
+      - name: Push Build Resource
+        if: ${{ github.event.inputs.Forced-Build == 'true' && (env.need-Build != 'false' || env.need-Build == '') }}
+        run: |
+          cd ./
+          mkdir -p build
+          cp /home/runner/work/Bilix-PreBuilds/Bilix-PreBuilds/Build.prop ./build/Build.prop
+          cp /home/runner/work/Bilix-PreBuilds/Changelog.txt ./build/Changelog.txt
+          cp /home/runner/work/Bilix-PreBuilds/Changelog_Nightly.txt ./build/Changelog_Nightly.txt
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add build/Build.prop
+          git add build/Changelog.txt
+          git add build/Changelog_Nightly.txt
+          git commit -m "Push resource"
+          git push
+        continue-on-error: true
+
+      ## Init Build work
+      - name: Init Build cn
+        if: ${{ env.need-Build != 'false' || env.need-Build == '' }}
+        run: |
+          curl -X POST \
+          -H "Accept: application/vnd.github.v3+json" \
+          -H "Authorization: token ${{ secrets.CUSTOM_GITHUB_TOKEN }}" \
+          https://api.github.com/repos/${{ github.repository }}/dispatches \
+          -d '{"event_type":"Build-cn"}'
+
+      - name: Init Build play
+        if: ${{ env.need-Build != 'false' || env.need-Build == '' }}
+        run: |
+          curl -X POST \
+          -H "Accept: application/vnd.github.v3+json" \
+          -H "Authorization: token ${{ secrets.CUSTOM_GITHUB_TOKEN }}" \
+          https://api.github.com/repos/${{ github.repository }}/dispatches \
+          -d '{"event_type":"Build-play"}'
+
+      - name: Init Build hd
+        if: ${{ env.need-Build != 'false' || env.need-Build == '' }}
+        run: |
+          curl -X POST \
+          -H "Accept: application/vnd.github.v3+json" \
+          -H "Authorization: token ${{ secrets.CUSTOM_GITHUB_TOKEN }}" \
+          https://api.github.com/repos/${{ github.repository }}/dispatches \
+          -d '{"event_type":"Build-hd"}'
+
+      # Success
+      - name: End
+        run: echo "Init end."
