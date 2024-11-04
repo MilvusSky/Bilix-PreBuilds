@@ -70,8 +70,8 @@ jobs:
         if: ${{ env.Build-Bilix == 'true'  }}
         run: |
           wget https://t.me/s/bilibili_apk_beta
-          echo "cn-url=https://file.io/WhsdzpeZ5AhZ" >> $GITHUB_ENV
-          echo "cn-patched-url=https://file.io/ClPc5GQjP7yV" >> $GITHUB_ENV
+          echo "cn-url=https://file.io/6MIpjuKtZJKM" >> $GITHUB_ENV
+          echo "cn-patched-url=https://file.io/bnyGRQrFhB6M" >> $GITHUB_ENV
 
       # Get original bilibili
       - name: Get original bilibili-cn
