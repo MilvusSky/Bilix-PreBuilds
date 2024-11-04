@@ -2,6 +2,12 @@ name: Build Bilix-cn-temp
 
 on:
   workflow_dispatch:
+      original_url:
+        description: 'Please enter the original URL'
+        required: true
+      patched_url:
+        description: 'Please enter the patched URL'
+        required: true
   repository_dispatch:
     types: [Build-cn]
 
@@ -66,23 +72,23 @@ jobs:
           cp ./build/integrations.apk ./integrations.apk
 
       # Get original bilibili url
-      - name: Get original bilibili url
-        if: ${{ env.Build-Bilix == 'true'  }}
-        run: |
-          wget https://t.me/s/bilibili_apk_beta
-          echo "cn-url=https://file.io/6MIpjuKtZJKM" >> $GITHUB_ENV
-          echo "cn-patched-url=https://file.io/bnyGRQrFhB6M" >> $GITHUB_ENV
+      # - name: Get original bilibili url
+      #   if: ${{ env.Build-Bilix == 'true'  }}
+      #   run: |
+      #     wget https://t.me/s/bilibili_apk_beta
+      #     echo "cn-url=https://file.io/6MIpjuKtZJKM" >> $GITHUB_ENV
+      #     echo "cn-patched-url=https://file.io/bnyGRQrFhB6M" >> $GITHUB_ENV
 
       # Get original bilibili
       - name: Get original bilibili-cn
         if: ${{ env.Build-Bilix == 'true' }}
         run: |
-          aria2c --out "cn.apk" ${{ env.cn-url }} --header="Refer:https://www.file.io/"
+          aria2c --out "cn.apk" ${{ github.event.inputs.original_url }} --header="Refer:https://www.file.io/"
       # Get patched bilibili
       - name: Get patched bilibili-cn
         if: ${{ env.Build-Bilix == 'true' }}
         run: |
-          aria2c --out "cn-patched.apk" ${{ env.cn-patched-url }} --header="Refer:https://www.file.io/"
+          aria2c --out "cn-patched.apk" ${{ github.event.inputs.patched_url }} --header="Refer:https://www.file.io/"
 
       # Check $version & $versionCode
       - name: "Get Cn Info"
@@ -143,41 +149,41 @@ jobs:
           echo "cn-size=$(stat -c %s ./Bilix-${{ env.Bilix-ver }}-${{ env.ver }}@Aniruf_x.apk)" >> $GITHUB_ENV
 
       # Release part
-      - name: Release Bilix
-        id: cn_release
-        if: ${{ env.Build-Bilix == 'true' && (env.with-release == 'true' || env.release == 'true') }}
-        uses: softprops/action-gh-release@v2
-        with:
-          token: ${{ secrets.CUSTOM_GITHUB_TOKEN }}
-          fail_on_unmatched_files: true
-          name: 'Bilix ${{ env.Bilix-ver }}(${{ env.Bilix-vercode }}) with BiliroamingX ${{ env.ver }}'
-          tag_name: 'android-v${{ env.Bilix-ver }}-b${{ env.cn-sn }}-p${{ env.ver }}'
-          body: |
-            版本信息：${{ env.Bilix-ver }} ${{ env.Bilix-vercode }} ${{ env.ver }} ${{ env.bigver }} ${{ env.cn-sn }} ${{ env.cn-size }} ${{ env.cn-md5 }} ${{ env.TIME }}
-             > 合并主分支
-             > Bump bili ver to ${{ env.Bilix-vercode }}
+      # - name: Release Bilix
+      #   id: cn_release
+      #   if: ${{ env.Build-Bilix == 'true' && (env.with-release == 'true' || env.release == 'true') }}
+      #   uses: softprops/action-gh-release@v2
+      #   with:
+      #     token: ${{ secrets.CUSTOM_GITHUB_TOKEN }}
+      #     fail_on_unmatched_files: true
+      #     name: 'Bilix ${{ env.Bilix-ver }}(${{ env.Bilix-vercode }}) with BiliroamingX ${{ env.ver }}'
+      #     tag_name: 'android-v${{ env.Bilix-ver }}-b${{ env.cn-sn }}-p${{ env.ver }}'
+      #     body: |
+      #       版本信息：${{ env.Bilix-ver }} ${{ env.Bilix-vercode }} ${{ env.ver }} ${{ env.bigver }} ${{ env.cn-sn }} ${{ env.cn-size }} ${{ env.cn-md5 }} ${{ env.TIME }}
+      #        > 合并主分支
+      #        > Bump bili ver to ${{ env.Bilix-vercode }}
             
-            ${{ env.Nightly-Changelog }}
-          files: ./Bilix-${{ env.Bilix-ver }}-${{ env.ver }}@Aniruf_x.apk
-        continue-on-error: true
+      #       ${{ env.Nightly-Changelog }}
+      #     files: ./Bilix-${{ env.Bilix-ver }}-${{ env.ver }}@Aniruf_x.apk
+      #   continue-on-error: true
 
-      - name: Release Again
-        run: |
-          curl --request PATCH \
-          --header 'Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' \
-          --header 'Content-type: application/json' \
-          --header 'User-Agent: Github-Action' \
-          --url https://api.github.com/repos/MilvusSky/Bilix-Prebuilds/releases/${{ steps.cn_release.outputs.id }} \
-          --data '{ "draft": false }'
+      # - name: Release Again
+      #   run: |
+      #     curl --request PATCH \
+      #     --header 'Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' \
+      #     --header 'Content-type: application/json' \
+      #     --header 'User-Agent: Github-Action' \
+      #     --url https://api.github.com/repos/MilvusSky/Bilix-Prebuilds/releases/${{ steps.cn_release.outputs.id }} \
+      #     --data '{ "draft": false }'
 
       # Del Release Nightly ver
-      - name: Delete old Nightly Bilix
-        if: ${{ env.Build-Bilix == 'true' }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.CUSTOM_GITHUB_TOKEN }}
-        run: |
-          gh release view "Nightly-android-Nightly" && gh release delete "Nightly-android-Nightly" -y --cleanup-tag
-        continue-on-error: true
+      # - name: Delete old Nightly Bilix
+      #   if: ${{ env.Build-Bilix == 'true' }}
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.CUSTOM_GITHUB_TOKEN }}
+      #   run: |
+      #     gh release view "Nightly-android-Nightly" && gh release delete "Nightly-android-Nightly" -y --cleanup-tag
+      #   continue-on-error: true
       
      # named Bilix-Nightly
       - name: Rename Bilix-Nightly
@@ -186,131 +192,135 @@ jobs:
           mv Bilix-${{ env.Bilix-ver }}-${{ env.ver }}@Aniruf_x.apk Bilix-cn-Nightly@Aniruf_x.apk
 
       # Release Nightly
-      - name: Release Bilix-Nightly
-        id: cn_nightly
-        if: ${{ env.Build-Bilix == 'true' }}
-        uses: softprops/action-gh-release@v2
-        with:
-          token: ${{ secrets.CUSTOM_GITHUB_TOKEN }}
-          fail_on_unmatched_files: false
-          name: 'Bilix Nightly - BiliRoamingX ${{ env.ver }}'
-          tag_name: 'Nightly-android-Nightly'
-          body: |
-            版本信息：${{ env.Bilix-ver }} ${{ env.Bilix-vercode }} ${{ env.ver }} ${{ env.bigver }} ${{ env.cn-sn }} ${{ env.cn-size }} ${{ env.cn-md5 }} ${{ env.TIME }}
+      # - name: Release Bilix-Nightly
+      #   id: cn_nightly
+      #   if: ${{ env.Build-Bilix == 'true' }}
+      #   uses: softprops/action-gh-release@v2
+      #   with:
+      #     token: ${{ secrets.CUSTOM_GITHUB_TOKEN }}
+      #     fail_on_unmatched_files: false
+      #     name: 'Bilix Nightly - BiliRoamingX ${{ env.ver }}'
+      #     tag_name: 'Nightly-android-Nightly'
+      #     body: |
+      #       版本信息：${{ env.Bilix-ver }} ${{ env.Bilix-vercode }} ${{ env.ver }} ${{ env.bigver }} ${{ env.cn-sn }} ${{ env.cn-size }} ${{ env.cn-md5 }} ${{ env.TIME }}
             
-            ![Nightly.jpg](https://github.com/sti-233/Bilix-PreBuilds/blob/main/Nightly.jpg)
-            > 合并主分支
-            > Bump bili-cn ver to ${{ env.Bilix-vercode }}
+      #       ![Nightly.jpg](https://github.com/sti-233/Bilix-PreBuilds/blob/main/Nightly.jpg)
+      #       > 合并主分支
+      #       > Bump bili-cn ver to ${{ env.Bilix-vercode }}
             
-            ${{ env.Nightly-Changelog }}
-          files: |
-            ./Bilix-cn-Nightly@Aniruf_x.apk
-        continue-on-error: true
+      #       ${{ env.Nightly-Changelog }}
+      #     files: |
+      #       ./Bilix-cn-Nightly@Aniruf_x.apk
+      #   continue-on-error: true
 
-      - name: Release Nightly Again
-        run: |
-          curl --request PATCH \
-          --header 'Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' \
-          --header 'Content-type: application/json' \
-          --header 'User-Agent: Github-Action' \
-          --url https://api.github.com/repos/MilvusSky/Bilix-Prebuilds/releases/${{ steps.cn_nightly.outputs.id }} \
-          --data '{ "draft": false }'
+      # - name: Release Nightly Again
+      #   run: |
+      #     curl --request PATCH \
+      #     --header 'Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' \
+      #     --header 'Content-type: application/json' \
+      #     --header 'User-Agent: Github-Action' \
+      #     --url https://api.github.com/repos/MilvusSky/Bilix-Prebuilds/releases/${{ steps.cn_nightly.outputs.id }} \
+      #     --data '{ "draft": false }'
 
       # output Bilix informations
-      - name: Build Bilix Success
-        if: ${{ env.Build-Bilix == 'true' }}
-        run: |
-          echo "### Build Bilix Success" >> $GITHUB_STEP_SUMMARY
-          echo "版本信息：${{ env.Bilix-ver }} ${{ env.Bilix-vercode }} ${{ env.ver }} ${{ env.bigver }} ${{ env.cn-sn }} ${{ env.cn-size }} ${{ env.cn-md5 }} ${{ env.TIME }}" >> $GITHUB_STEP_SUMMARY
-          echo " " >> $GITHUB_STEP_SUMMARY
-          echo " > 合并主分支" >> $GITHUB_STEP_SUMMARY
-          echo " > Bump bili ver to ${{ env.Bilix-vercode }}" >> $GITHUB_STEP_SUMMARY
-          echo " " >> $GITHUB_STEP_SUMMARY
-          echo "$(cat ./build/Changelog_Nightly.txt)" >> $GITHUB_STEP_SUMMARY
-        continue-on-error: true
+      # - name: Build Bilix Success
+      #   if: ${{ env.Build-Bilix == 'true' }}
+      #   run: |
+      #     echo "### Build Bilix Success" >> $GITHUB_STEP_SUMMARY
+      #     echo "版本信息：${{ env.Bilix-ver }} ${{ env.Bilix-vercode }} ${{ env.ver }} ${{ env.bigver }} ${{ env.cn-sn }} ${{ env.cn-size }} ${{ env.cn-md5 }} ${{ env.TIME }}" >> $GITHUB_STEP_SUMMARY
+      #     echo " " >> $GITHUB_STEP_SUMMARY
+      #     echo " > 合并主分支" >> $GITHUB_STEP_SUMMARY
+      #     echo " > Bump bili ver to ${{ env.Bilix-vercode }}" >> $GITHUB_STEP_SUMMARY
+      #     echo " " >> $GITHUB_STEP_SUMMARY
+      #     echo "$(cat ./build/Changelog_Nightly.txt)" >> $GITHUB_STEP_SUMMARY
+      #   continue-on-error: true
 
-      - name: Upload Build Resource
-        if: ${{ env.Build-Bilix == 'true' }}
-        run: |
-          cd ./
-          rm ./Build.prop
-          cp ./build/Build.prop ./Build.prop
-          git config --global user.name 'github-actions[bot]'
-          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          git add Build.prop
-          git commit -m "Push prop"
-          git push
-        continue-on-error: true
+      # - name: Upload Build Resource
+      #   if: ${{ env.Build-Bilix == 'true' }}
+      #   run: |
+      #     cd ./
+      #     rm ./Build.prop
+      #     cp ./build/Build.prop ./Build.prop
+      #     git config --global user.name 'github-actions[bot]'
+      #     git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+      #     git add Build.prop
+      #     git commit -m "Push prop"
+      #     git push
+      #   continue-on-error: true
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.9.x'
+      # - name: Setup Python
+      #   uses: actions/setup-python@v5
+      #   with:
+      #     python-version: '3.9.x'
 
-      - name: Prepare
-        run : |
-          mv ./Bilix-cn-Nightly@Aniruf_x.apk ./Bilix-cn-Nightly-n.${{ env.commit-count }}.${{ env.hash }}@Aniruf_x.apk
-          echo "Nightly_apk=./Bilix-cn-Nightly-n.${{ env.commit-count }}.${{ env.hash }}@Aniruf_x.apk" >> $GITHUB_ENV
-          pip install pyrogram tgcrypto
+      # - name: Prepare
+      #   run : |
+      #     mv ./Bilix-cn-Nightly@Aniruf_x.apk ./Bilix-cn-Nightly-n.${{ env.commit-count }}.${{ env.hash }}@Aniruf_x.apk
+      #     echo "Nightly_apk=./Bilix-cn-Nightly-n.${{ env.commit-count }}.${{ env.hash }}@Aniruf_x.apk" >> $GITHUB_ENV
+      #     pip install pyrogram tgcrypto
 
-      - name: Post to Channel
-        shell: python
-        env:
-          API_ID: ${{ secrets.TELEGRAM_API_ID }}
-          API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
-          chat_id: ${{ secrets.CHANNEL_ID }}
-          session: ${{ secrets.TELEGRAM_SESSION }}
-        run: |
-          import asyncio
-          import inspect
-          import os
-          from pyrogram import Client
-          from pyrogram.types import InputMediaDocument
-          async def main():
-            session = os.environ["session"]
-            bot = Client(
-              "client",
-              session_string=session,
-            )
-            async with bot:
-              Day = os.environ["Day"]
-              RoamingXver = os.environ["ver"]
-              ver = os.environ["Bilix-ver"]
-              ver_code = os.environ["Bilix-vercode"]
-              chat_id = os.environ["chat_id"]
-              changelog = os.environ["Nightly-Changelog"]
-              msg_p1 = f"Bilix Nightly - {Day}"
-              msg_p2 = f"BiliRoamingX {RoamingXver}"
-              msg_p3 = f"<pre>cn {ver} {ver_code}</pre>"
-              msg_p4 = "New release to GitHub!<pre>"
-              msg_p5 = inspect.cleandoc("""
-              > 合并 sti-233/BiliRoamingX
-               *现在具有切换更新源的能力\n
-              """)
-              msg_p6 = f"{changelog}</pre>"
-              msg_p7 = inspect.cleandoc("""
-              by sti-233
-              在Github查看详情
+      # - name: Post to Channel
+      #   shell: python
+      #   env:
+      #     API_ID: ${{ secrets.TELEGRAM_API_ID }}
+      #     API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
+      #     chat_id: ${{ secrets.CHANNEL_ID }}
+      #     session: ${{ secrets.TELEGRAM_SESSION }}
+      #   run: |
+      #     import asyncio
+      #     import inspect
+      #     import os
+      #     from pyrogram import Client
+      #     from pyrogram.types import InputMediaDocument
+      #     async def main():
+      #       session = os.environ["session"]
+      #       bot = Client(
+      #         "client",
+      #         session_string=session,
+      #       )
+      #       async with bot:
+      #         Day = os.environ["Day"]
+      #         RoamingXver = os.environ["ver"]
+      #         ver = os.environ["Bilix-ver"]
+      #         ver_code = os.environ["Bilix-vercode"]
+      #         chat_id = os.environ["chat_id"]
+      #         changelog = os.environ["Nightly-Changelog"]
+      #         msg_p1 = f"Bilix Nightly - {Day}"
+      #         msg_p2 = f"BiliRoamingX {RoamingXver}"
+      #         msg_p3 = f"<pre>cn {ver} {ver_code}</pre>"
+      #         msg_p4 = "New release to GitHub!<pre>"
+      #         msg_p5 = inspect.cleandoc("""
+      #         > 合并 sti-233/BiliRoamingX
+      #          *现在具有切换更新源的能力\n
+      #         """)
+      #         msg_p6 = f"{changelog}</pre>"
+      #         msg_p7 = inspect.cleandoc("""
+      #         by sti-233
+      #         在Github查看详情
               
-              *此为非官方构建
-              Patched by @Aniruf_x
-              #Biliroaming_X #cn
-              """)
-              caption = "{}\n\n{}\n{}\n\n{}\n{}\n{}{}".format(msg_p1, msg_p2, msg_p3, msg_p4, msg_p5, msg_p6, msg_p7)
-              Nightly = InputMediaDocument(media=os.environ["Nightly_apk"], caption=caption)
-              # 发送到指定的频道
-              await bot.send_media_group(
-                chat_id=chat_id,
-                media=[Nightly],
-              )
-          async def wait():
-            try:
-              await asyncio.wait_for(main(), timeout=600)
-            except asyncio.TimeoutError:
-              print("message send timeout!!!")
-              exit(1)
-          asyncio.run(wait())
-
+      #         *此为非官方构建
+      #         Patched by @Aniruf_x
+      #         #Biliroaming_X #cn
+      #         """)
+      #         caption = "{}\n\n{}\n{}\n\n{}\n{}\n{}{}".format(msg_p1, msg_p2, msg_p3, msg_p4, msg_p5, msg_p6, msg_p7)
+      #         Nightly = InputMediaDocument(media=os.environ["Nightly_apk"], caption=caption)
+      #         # 发送到指定的频道
+      #         await bot.send_media_group(
+      #           chat_id=chat_id,
+      #           media=[Nightly],
+      #         )
+      #     async def wait():
+      #       try:
+      #         await asyncio.wait_for(main(), timeout=600)
+      #       except asyncio.TimeoutError:
+      #         print("message send timeout!!!")
+      #         exit(1)
+      #     asyncio.run(wait())
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Bilix-cn-Nightly@Aniruf_x.apk  # Artifact 名称
+          path: Bilix-cn-Nightly@Aniruf_x.apk         # 要保存的文件或文件夹路径
       # Success
       - name: End
         run: echo "Build end."
