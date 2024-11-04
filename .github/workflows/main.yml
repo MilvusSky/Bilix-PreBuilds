@@ -1,6 +1,7 @@
-name: Build Bilix-cn
+name: Build Bilix-cn-temp
 
 on:
+  workflow_dispatch:
   repository_dispatch:
     types: [Build-cn]
 
