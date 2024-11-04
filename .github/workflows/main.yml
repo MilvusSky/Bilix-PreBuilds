@@ -2,6 +2,7 @@ name: Build Bilix-cn-temp
 
 on:
   workflow_dispatch:
+    inputs:
       original_url:
         description: 'Please enter the original URL'
         required: true
